@@ -20,10 +20,16 @@ class GoogleAuthService: ObservableObject {
     }
     
     // MARK: - Google OAuth2 Config
-    private let clientID = "1085183123334-fadglpni9ukaktssjdgqkgauf2kb6m75.apps.googleusercontent.com" // <-- Replace with your client ID
-    private let redirectURI = "com.googleusercontent.apps.1085183123334-fadglpni9ukaktssjdgqkgauf2kb6m75:/oauthredirect" // <-- Replace with your redirect URI
+    private let clientID = "1085183123334-fadglpni9ukaktssjdgqkgauf2kb6m75.apps.googleusercontent.com" 
+    private let redirectURI = "com.googleusercontent.apps.1085183123334-fadglpni9ukaktssjdgqkgauf2kb6m75:/oauthredirect"
     private let issuer = URL(string: "https://accounts.google.com")!
-    private let scopes = [OIDScopeOpenID, OIDScopeProfile, "https://www.googleapis.com/auth/calendar"]
+    private let scopes = [
+        OIDScopeOpenID,                // "openid"
+        OIDScopeProfile,               // "profile"
+        OIDScopeEmail,                 // "email"
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/gmail.modify"
+    ]
     
     private var currentAuthorizationFlow: OIDExternalUserAgentSession?
     private let keychainKey = "GoogleAuthState"
