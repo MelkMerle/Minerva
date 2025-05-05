@@ -4,43 +4,44 @@ import SwiftUI
 extension Color {
     func darken(by percentage: CGFloat) -> Color {
         let uiColor = NSColor(self)
+        guard let rgbColor = uiColor.usingColorSpace(.deviceRGB) else {
+            return self // fallback to original color if conversion fails
+        }
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        rgbColor.getRed(&r, green: &g, blue: &b, alpha: &a)
         return Color(red: max(r - percentage, 0), green: max(g - percentage, 0), blue: max(b - percentage, 0))
     }
 }
 
+// Google Calendar color palette mapping (Google's default event colors)
+let googleCalendarColors: [String: Color] = [
+    "1": Color(red: 0.44, green: 0.62, blue: 0.80), // Blue
+    "2": Color(red: 0.91, green: 0.49, blue: 0.13), // Orange
+    "3": Color(red: 0.91, green: 0.33, blue: 0.23), // Red
+    "4": Color(red: 0.60, green: 0.60, blue: 0.60), // Gray
+    "5": Color(red: 0.36, green: 0.69, blue: 0.36), // Green
+    "6": Color(red: 0.56, green: 0.35, blue: 0.64), // Purple
+    "7": Color(red: 0.16, green: 0.50, blue: 0.73), // Dark Blue
+    "8": Color(red: 0.80, green: 0.60, blue: 0.20), // Brown
+    "9": Color(red: 0.80, green: 0.40, blue: 0.60), // Pink
+    "10": Color(red: 0.27, green: 0.67, blue: 0.80), // Teal
+    "11": Color(red: 0.80, green: 0.80, blue: 0.20) // Yellow
+]
+
 struct CalendarView: View {
-    struct Event: Identifiable {
-        let id = UUID()
-        let title: String
-        let start: Date
-        let end: Date
-        let color: Color
-    }
     struct Task: Identifiable {
         let id = UUID()
         let title: String
     }
     
-    @State private var selectedEvent: Event? = nil
+    @StateObject private var calendarService = GoogleCalendarService(authService: GoogleAuthService())
+    @State private var selectedEvent: GoogleCalendarEvent? = nil
     @State private var showSidebar: Bool = false
     private let hours = Array(0...23) // 00:00 to 23:00
     private let hourHeight: CGFloat = 80
     private let defaultScrollHour = 9 // 9AM
     @State private var scrollProxy: ScrollViewProxy?
     
-    // Dummy data
-    private var events: [Event] {
-        let calendar = Calendar.current
-        let today = Date()
-        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
-        return [
-            Event(title: "Design Sync", start: calendar.date(byAdding: .hour, value: 10, to: startOfWeek)!, end: calendar.date(byAdding: .hour, value: 11, to: startOfWeek)!, color: Color(red: 0.36, green: 0.54, blue: 0.96)),
-            Event(title: "1:1 Meeting", start: calendar.date(byAdding: .day, value: 2, to: calendar.date(byAdding: .hour, value: 14, to: startOfWeek)!)!, end: calendar.date(byAdding: .day, value: 2, to: calendar.date(byAdding: .hour, value: 15, to: startOfWeek)!)!, color: Color(red: 0.98, green: 0.77, blue: 0.36)),
-            Event(title: "Project Review", start: calendar.date(byAdding: .day, value: 4, to: calendar.date(byAdding: .hour, value: 9, to: startOfWeek)!)!, end: calendar.date(byAdding: .day, value: 4, to: calendar.date(byAdding: .hour, value: 10, to: startOfWeek)!)!, color: Color(red: 0.98, green: 0.36, blue: 0.36))
-        ]
-    }
     private let tasks: [Task] = [
         Task(title: "Write project update"),
         Task(title: "Review PR #42"),
@@ -116,15 +117,16 @@ struct CalendarView: View {
                                             Rectangle()
                                                 .fill(Color.white.opacity(0.001))
                                             // Render event blocks
-                                            ForEach(events) { event in
+                                            ForEach(calendarService.events) { event in
                                                 if calendar.isDate(event.start, inSameDayAs: day) && calendar.component(.hour, from: event.start) == hour {
+                                                    let color = event.colorId.flatMap { googleCalendarColors[$0] } ?? DesignSystem.primaryColor
                                                     RoundedRectangle(cornerRadius: 6)
-                                                        .fill(event.color.opacity(0.18))
+                                                        .fill(color.opacity(0.18))
                                                         .frame(height: hourHeight - 8)
                                                         .overlay(
                                                             Text(event.title)
                                                                 .font(.system(size: 13, weight: .medium))
-                                                                .foregroundColor(event.color.darken(by: 0.5))
+                                                                .foregroundColor(color.darken(by: 0.5))
                                                                 .padding(.horizontal, 8), alignment: .leading
                                                         )
                                                         .padding(.vertical, 2)
@@ -169,5 +171,13 @@ struct CalendarView: View {
         .background(DesignSystem.backgroundColor)
         .padding(.top, 8)
         .padding(.horizontal, 8)
+        .onAppear {
+            // Fetch events for the current week
+            let calendar = Calendar.current
+            let today = Date()
+            let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
+            let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek)!
+            calendarService.fetchEvents(start: startOfWeek, end: endOfWeek)
+        }
     }
 } 
