@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2F1F34FB2DC0BE4000FB5884 /* AppAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2F1F34FA2DC0BE4000FB5884 /* AppAuth */; };
+		2F1F34FD2DC0BE4000FB5884 /* AppAuthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2F1F34FC2DC0BE4000FB5884 /* AppAuthCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2F0C6C0A2DBF7B6B0035C744 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2F1F34FB2DC0BE4000FB5884 /* AppAuth in Frameworks */,
+				2F1F34FD2DC0BE4000FB5884 /* AppAuthCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = Minerva;
 			packageProductDependencies = (
+				2F1F34FA2DC0BE4000FB5884 /* AppAuth */,
+				2F1F34FC2DC0BE4000FB5884 /* AppAuthCore */,
 			);
 			productName = Minerva;
 			productReference = 2F0C6BFB2DBF7B690035C744 /* Minerva.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = 2F0C6BF22DBF7B690035C744;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2F1F34F92DC0BE4000FB5884 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2F0C6BFC2DBF7B690035C744 /* Products */;
 			projectDirPath = "";
@@ -583,6 +595,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2F1F34F92DC0BE4000FB5884 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/openid/AppAuth-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2F1F34FA2DC0BE4000FB5884 /* AppAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F1F34F92DC0BE4000FB5884 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */;
+			productName = AppAuth;
+		};
+		2F1F34FC2DC0BE4000FB5884 /* AppAuthCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F1F34F92DC0BE4000FB5884 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */;
+			productName = AppAuthCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2F0C6BF32DBF7B690035C744 /* Project object */;
 }
