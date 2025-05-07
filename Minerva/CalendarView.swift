@@ -37,6 +37,7 @@ struct CalendarView: View {
     @StateObject private var calendarService = GoogleCalendarService(authService: GoogleAuthService())
     @State private var selectedEvent: GoogleCalendarEvent? = nil
     @State private var showSidebar: Bool = false
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     private let hours = Array(0...23) // 00:00 to 23:00
     private let hourHeight: CGFloat = 80
     private let defaultScrollHour = 9 // 9AM
@@ -78,79 +79,87 @@ struct CalendarView: View {
             .background(DesignSystem.backgroundColor)
             .padding(.trailing, 1)
             
-            // Calendar grid
+            // Single day calendar grid
             VStack(spacing: 0) {
-                // Weekday headers
-                let calendar = Calendar.current
-                let today = Date()
-                let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
-                let days = (0..<7).map { calendar.date(byAdding: .day, value: $0, to: startOfWeek)! }
-                HStack(spacing: 0) {
-                    Spacer().frame(width: 44) // For hour column
-                    ForEach(days, id: \ .self) { day in
-                        VStack {
-                            Text(day, format: .dateTime.weekday(.abbreviated))
-                                .font(.headline)
-                            Text(day, format: .dateTime.day())
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                // Day header with navigation
+                HStack {
+                    Button(action: { changeDay(by: -1) }) {
+                        Image(systemName: "chevron.left")
                     }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 8)
+                    Spacer()
+                    VStack {
+                        Text(selectedDate, format: .dateTime.weekday(.wide))
+                            .font(.largeTitle).bold()
+                        Text(selectedDate, format: .dateTime.month().day().year())
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button(action: { changeDay(by: 1) }) {
+                        Image(systemName: "chevron.right")
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 8)
                 }
+                .padding(.vertical, 8)
                 Divider()
-                // Hours grid
-                ScrollViewReader { proxy in
-                    ScrollView([.vertical]) {
-                        VStack(spacing: 0) {
-                            ForEach(hours, id: \ .self) { hour in
-                                HStack(spacing: 0) {
-                                    // Hour label
-                                    Text(String(format: "%02d:00", hour))
-                                        .font(.system(size: 13, weight: .regular, design: .monospaced))
-                                        .foregroundColor(.secondary)
-                                        .frame(width: 44, alignment: .trailing)
-                                        .padding(.trailing, 4)
-                                    ForEach(days, id: \ .self) { day in
-                                        ZStack {
+                // Hours grid with events overlay
+                GeometryReader { geometry in
+                    let totalHeight = hourHeight * CGFloat(hours.count)
+                    ScrollViewReader { proxy in
+                        ScrollView([.vertical], showsIndicators: true) {
+                            ZStack(alignment: .topLeading) {
+                                // Hour grid background
+                                VStack(spacing: 0) {
+                                    ForEach(hours, id: \ .self) { hour in
+                                        HStack(spacing: 0) {
+                                            Text(String(format: "%02d:00", hour))
+                                                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                                                .foregroundColor(.secondary)
+                                                .frame(width: 44, alignment: .trailing)
+                                                .padding(.trailing, 4)
+                                                .frame(height: hourHeight, alignment: .center)
                                             Rectangle()
-                                                .fill(Color.white.opacity(0.001))
-                                            // Render event blocks
-                                            ForEach(calendarService.events) { event in
-                                                if calendar.isDate(event.start, inSameDayAs: day) && calendar.component(.hour, from: event.start) == hour {
-                                                    let color = event.colorId.flatMap { googleCalendarColors[$0] } ?? DesignSystem.primaryColor
-                                                    RoundedRectangle(cornerRadius: 6)
-                                                        .fill(color.opacity(0.18))
-                                                        .frame(height: hourHeight - 8)
-                                                        .overlay(
-                                                            Text(event.title)
-                                                                .font(.system(size: 13, weight: .medium))
-                                                                .foregroundColor(color.darken(by: 0.5))
-                                                                .padding(.horizontal, 8), alignment: .leading
-                                                        )
-                                                        .padding(.vertical, 2)
-                                                        .padding(.horizontal, 2)
-                                                        .onTapGesture {
-                                                            selectedEvent = event
-                                                            showSidebar = true
-                                                        }
-                                                }
-                                            }
+                                                .fill(Color.gray.opacity(0.08))
+                                                .frame(height: 1)
+                                            Spacer()
                                         }
-                                        .frame(maxWidth: .infinity, minHeight: hourHeight, maxHeight: hourHeight)
-                                        .border(Color.gray.opacity(0.08), width: 0.5)
+                                        .frame(height: hourHeight, alignment: .center)
                                     }
                                 }
-                                .id(hour)
+                                // Events overlay
+                                ForEach(eventsForSelectedDaySorted(), id: \ .id) { event in
+                                    let (y, height) = eventPositionAndHeight(event: event)
+                                    let color = event.colorId.flatMap { googleCalendarColors[$0] } ?? DesignSystem.primaryColor
+                                    Button(action: {
+                                        selectedEvent = event
+                                        showSidebar = true
+                                    }) {
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(color.opacity(0.18))
+                                            .overlay(
+                                                Text(event.title)
+                                                    .font(.system(size: 13, weight: .medium))
+                                                    .foregroundColor(color.darken(by: 0.5))
+                                                    .padding(.horizontal, 8), alignment: .leading
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .frame(width: geometry.size.width - 44 - 8, height: height)
+                                    .position(x: 44 + 8 + (geometry.size.width - 44 - 8)/2, y: y + height/2)
+                                }
                             }
+                            .frame(height: totalHeight, alignment: .top)
+                            .id("calendarGrid")
                         }
-                        .padding(.bottom, 12)
-                    }
-                    .onAppear {
-                        // Scroll to 9AM by default
-                        DispatchQueue.main.async {
-                            proxy.scrollTo(defaultScrollHour, anchor: .top)
+                        .onAppear {
+                            // Scroll to 9AM by default
+                            DispatchQueue.main.async {
+                                proxy.scrollTo("calendarGrid", anchor: .top)
+                                proxy.scrollTo(defaultScrollHour, anchor: .top)
+                            }
                         }
                     }
                 }
@@ -172,12 +181,39 @@ struct CalendarView: View {
         .padding(.top, 8)
         .padding(.horizontal, 8)
         .onAppear {
-            // Fetch events for the current week
-            let calendar = Calendar.current
-            let today = Date()
-            let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
-            let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek)!
-            calendarService.fetchEvents(start: startOfWeek, end: endOfWeek)
+            fetchEventsForSelectedDay()
         }
+    }
+    
+    private func fetchEventsForSelectedDay() {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: selectedDate)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        calendarService.fetchEvents(start: startOfDay, end: endOfDay)
+    }
+    
+    private func changeDay(by offset: Int) {
+        if let newDate = Calendar.current.date(byAdding: .day, value: offset, to: selectedDate) {
+            selectedDate = newDate
+            fetchEventsForSelectedDay()
+        }
+    }
+    
+    private func eventsForSelectedDaySorted() -> [GoogleCalendarEvent] {
+        let calendar = Calendar.current
+        return calendarService.events.filter { event in
+            calendar.isDate(event.start, inSameDayAs: selectedDate)
+        }.sorted { $0.start < $1.start }
+    }
+    
+    // Calculate the vertical position and height for an event
+    private func eventPositionAndHeight(event: GoogleCalendarEvent) -> (CGFloat, CGFloat) {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: selectedDate)
+        let startMinutes = calendar.dateComponents([.minute], from: startOfDay, to: event.start).minute ?? 0
+        let endMinutes = calendar.dateComponents([.minute], from: startOfDay, to: event.end).minute ?? (startMinutes + 60)
+        let y = CGFloat(startMinutes) / 60.0 * hourHeight
+        let height = max(20, CGFloat(endMinutes - startMinutes) / 60.0 * hourHeight)
+        return (y, height)
     }
 } 
